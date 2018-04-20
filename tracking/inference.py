@@ -146,8 +146,6 @@ class ExactInference(InferenceModule):
         pacmanPosition = gameState.getPacmanPosition()
 
         "*** YOUR CODE HERE ***"
-        #util.raiseNotDefined()
-
         # Replace this code with a correct observation update
         # Be sure to handle the "jail" edge case where the ghost is eaten
         # and noisyDistance is None
@@ -262,6 +260,12 @@ class ParticleFilter(InferenceModule):
             and will produce errors
         """
         "*** YOUR CODE HERE ***"
+        self.particles = []
+        numPosition = len(self.legalPositions)
+        distribute = self.numParticles / numPosition
+        for position in self.legalPositions:
+            for i in range(0, distribute):
+                self.particles.append(position)
 
     def observe(self, observation, gameState):
         """
@@ -296,7 +300,26 @@ class ParticleFilter(InferenceModule):
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        if noisyDistance == None:
+            self.particles = []
+            for i in range(0, self.numParticles):
+                self.particles.append(self.getJailPosition())
+        else:
+            beliefs = self.getBeliefDistribution()
+            for p in self.legalPositions:
+                trueDistance = util.manhattanDistance(p, pacmanPosition)
+                beliefs[p] *= emissionModel[trueDistance]
+            recreated = True
+            for b, w in beliefs.items():
+                if w != 0:
+                    recreated = False
+                    break
+            if recreated:
+                self.initializeUniformly(gameState)
+            else:
+                self.particles = []
+                for i in range(0, self.numParticles):
+                    self.particles.append(util.sample(beliefs))
 
     def elapseTime(self, gameState):
         """
@@ -314,7 +337,11 @@ class ParticleFilter(InferenceModule):
         belief distribution
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        allPossible = []
+        for oldPos in self.particles:
+            newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, oldPos))
+            allPossible.append(util.sample(newPosDist))
+        self.particles = allPossible
 
     def getBeliefDistribution(self):
         """
@@ -323,7 +350,11 @@ class ParticleFilter(InferenceModule):
           essentially converts a list of particles into a belief distribution (a Counter object)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        beliefs = util.Counter()
+        for particle in self.particles:
+            beliefs[particle] += 1
+        beliefs.normalize()
+        return beliefs
 
 class MarginalInference(InferenceModule):
     "A wrapper around the JointInference module that returns marginal beliefs about ghosts."
